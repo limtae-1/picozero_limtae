@@ -1,7 +1,7 @@
-from machine import Pin, PWM, Timer, ADC
+from machine import Pin, PWM, Timer, ADC, I2C
 from micropython import schedule
 from time import ticks_ms, ticks_us, sleep
-import dht
+import dht, ssd1306
 
 ###############################################################################
 # EXCEPTIONS
@@ -1968,8 +1968,9 @@ class DistanceSensor(PinsMixin):
         """
         return self._max_distance
 
+#===========================================================================================================#
 #추가한 부분
-class DHTSensor(DigitalInputDevice):
+class DHTSensor(DigitalInputDevice): #온습도 센서
     def __init__(self, pin, model='DHT11'):
         super().__init__(pin)
         self._model = model.upper()
@@ -1998,3 +1999,57 @@ class DHTSensor(DigitalInputDevice):
     def __str__(self):
         self.read()
         return "Temperature: {}C, Humidity: {}%".format(self._temperature, self._humidity)
+#===========================================================================================================#
+# OLED 클래스 추가 128x64 디스플레이사용한다고 가정
+class OLED(PinsMixin):
+    def __init__(self, scl, sda, width=128, height=64, i2c_id=0, freq=400000):
+        # OLED 클래스 초기화 메서드. SCL, SDA 핀 번호와 디스플레이의 너비와 높이를 설정
+        self._pin_nums = (scl, sda)
+        # I2C 통신 설정을 위해 I2C 객체를 생성
+        self._i2c = I2C(i2c_id, scl=Pin(scl), sda=Pin(sda), freq=freq)
+        # SSD1306 OLED 드라이버 객체를 생성
+        self._display = ssd1306.SSD1306_I2C(width, height, self._i2c)
+    
+    def text(self, message, x, y):
+        # 지정된 위치에 텍스트 메시지를 출력
+        self._display.text(message, x, y)
+        self._display.show()
+        
+    def fill(self, color):
+        # 디스플레이 전체를 지정된 색상으로 채우기.
+        self._display.fill(color)
+        self._display.show()
+
+    def show(self):
+        # 디스플레이에 변경사항을 반영.
+        self._display.show()
+
+    def clear(self):
+        # 디스플레이를 지우기 (전체를 검은색으로 채우기).
+        self._display.fill(0)
+        self._display.show()
+        
+    def invert(self, invert):
+        # 디스플레이의 색상을 반전
+        self._display.invert(invert)
+        self._display.show()
+
+    def pixel(self, x, y, color):
+        # 지정된 위치의 픽셀을 설정
+        self._display.pixel(x, y, color)
+        self._display.show()
+
+    def line(self, x0, y0, x1, y1, color):
+        # 지정된 두 점 사이에 선 그리기
+        self._display.line(x0, y0, x1, y1, color)
+        self._display.show()
+
+    def rect(self, x, y, width, height, color):
+        # 지정된 위치에 직사각형을 그리기
+        self._display.rect(x, y, width, height, color)
+        self._display.show()
+
+    def fill_rect(self, x, y, width, height, color):
+        # 지정된 위치에 채워진 직사각형을 그리기
+        self._display.fill_rect(x, y, width, height, color)
+        self._display.show()
