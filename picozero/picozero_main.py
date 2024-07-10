@@ -1,6 +1,6 @@
 from machine import Pin, PWM, Timer, ADC, I2C
 from micropython import schedule
-from time import ticks_ms, ticks_us, sleep
+from time import ticks_ms, ticks_us, sleep, sleep_ms
 import dht, ssd1306
 
 ###############################################################################
@@ -2053,3 +2053,210 @@ class OLED(PinsMixin):
         # 지정된 위치에 채워진 직사각형을 그리기
         self._display.fill_rect(x, y, width, height, color)
         self._display.show()
+
+#===========================================================================================================#
+# LCD 클래스 추가 2x16 디스플레이사용한다고 가정 I2clcd와 LcdApi는 lcd를 제어하기 위한 기본 클래스임.
+# 통신 속도가 느리면 조절 가능(자세한 건 부품별 코드에서 LCD코드 주석확인하기)
+class LcdApi:
+    # Implements the API for talking with HD44780 compatible character LCDs.
+    LCD_CLR = 0x01
+    LCD_RET_HOME = 0x02
+    LCD_ENTRY_MODE = 0x04
+    LCD_ENTRY_INC = 0x02
+    LCD_ENTRY_SHIFT = 0x01
+    LCD_ON_CTRL = 0x08
+    LCD_ON_DISPLAY = 0x04
+    LCD_ON_CURSOR = 0x02
+    LCD_ON_BLINK = 0x01
+    LCD_MOVE = 0x10
+    LCD_MOVE_DISP = 0x08
+    LCD_MOVE_RIGHT = 0x04
+    LCD_FUNCTION = 0x20
+    LCD_FUNCTION_8BIT = 0x10
+    LCD_FUNCTION_2LINES = 0x08
+    LCD_FUNCTION_10DOTS = 0x04
+    LCD_CGRAM = 0x40
+    LCD_DDRAM = 0x80
+    LCD_RS_CMD = 0
+    LCD_RS_DATA = 1
+    LCD_RW_WRITE = 0
+    LCD_RW_READ = 1
+
+    def __init__(self, num_lines, num_columns):
+        self.num_lines = num_lines
+        self.num_columns = num_columns
+        self.cursor_x = 0
+        self.cursor_y = 0
+        self.implied_newline = False
+        self.backlight = True
+
+    def init_display(self):
+        self.write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        time.sleep_ms(5)
+        self.write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        time.sleep_ms(1)
+        self.write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        time.sleep_ms(1)
+        self.write_init_nibble(self.LCD_FUNCTION)
+        time.sleep_ms(1)
+        self.write_command(self.LCD_FUNCTION | self.LCD_FUNCTION_2LINES)
+        self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY)
+        self.write_command(self.LCD_CLR)
+        self.write_command(self.LCD_ENTRY_MODE | self.LCD_ENTRY_INC)
+
+    def clear(self):
+        self.write_command(self.LCD_CLR)
+        self.write_command(self.LCD_RET_HOME)
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def show_cursor(self):
+        self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR)
+
+    def hide_cursor(self):
+        self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY)
+
+    def blink_cursor_on(self):
+        self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR | self.LCD_ON_BLINK)
+
+    def blink_cursor_off(self):
+        self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR)
+
+    def move_to(self, cursor_x, cursor_y):
+        self.cursor_x = cursor_x
+        self.cursor_y = cursor_y
+        addr = cursor_x & 0x3f
+        if cursor_y == 1:
+            addr += 0x40  # 2nd line offset
+        self.write_command(self.LCD_DDRAM | addr)
+
+    def putchar(self, char):
+        if char == '\n':
+            if self.implied_newline:
+                return
+            self.cursor_x = self.num_columns
+        else:
+            self.write_data(ord(char))
+            self.cursor_x += 1
+        if self.cursor_x >= self.num_columns:
+            self.cursor_x = 0
+            self.cursor_y += 1
+            self.implied_newline = (char != '\n')
+            if self.cursor_y >= self.num_lines:
+                self.cursor_y = 0
+            self.move_to(self.cursor_x, self.cursor_y)
+
+    def putstr(self, string):
+        for char in string:
+            self.putchar(char)
+
+    def custom_char(self, location, charmap):
+        location &= 0x7
+        self.write_command(self.LCD_CGRAM | (location << 3))
+        self.write_data(charmap)
+
+    def hal_backlight_on(self):
+        raise NotImplementedError
+
+    def hal_backlight_off(self):
+        raise NotImplementedError
+
+    def hal_write_command(self, cmd):
+        raise NotImplementedError
+
+    def hal_write_data(self, data):
+        raise NotImplementedError
+
+    def hal_write_init_nibble(self, nibble):
+        raise NotImplementedError
+
+    def write_command(self, cmd):
+        self.hal_write_command(cmd)
+
+    def write_data(self, data):
+        self.hal_write_data(data)
+
+    def write_init_nibble(self, nibble):
+        self.hal_write_init_nibble(nibble)
+
+class I2cLcd(LcdApi):
+    def __init__(self, i2c, i2c_addr, num_lines, num_columns):
+        self.i2c = i2c
+        self.i2c_addr = i2c_addr
+        self.i2c.writeto(self.i2c_addr, bytearray([0]))
+        self.hal_backlight = True
+        self.hal_write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        sleep_ms(5)
+        self.hal_write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        sleep_ms(1)
+        self.hal_write_init_nibble(self.LCD_FUNCTION | self.LCD_FUNCTION_8BIT)
+        sleep_ms(1)
+        self.hal_write_init_nibble(self.LCD_FUNCTION)
+        sleep_ms(1)
+        LcdApi.__init__(self, num_lines, num_columns)
+        self.hal_write_command(self.LCD_FUNCTION | self.LCD_FUNCTION_2LINES)
+        self.hal_write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY)
+        self.hal_write_command(self.LCD_CLR)
+        self.hal_write_command(self.LCD_ENTRY_MODE | self.LCD_ENTRY_INC)
+
+    def hal_backlight_on(self):
+        self.hal_backlight = True
+        self.i2c.writeto(self.i2c_addr, bytearray([0x08]))
+
+    def hal_backlight_off(self):
+        self.hal_backlight = False
+        self.i2c.writeto(self.i2c_addr, bytearray([0x00]))
+
+    def hal_write_command(self, cmd):
+        byte = (cmd & 0xF0) | self.LCD_RS_CMD
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+
+        byte = (cmd << 4) & 0xF0 | self.LCD_RS_CMD
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+
+    def hal_write_data(self, data):
+        byte = (data & 0xF0) | self.LCD_RS_DATA
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+
+        byte = (data << 4) & 0xF0 | self.LCD_RS_DATA
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+
+    def hal_write_init_nibble(self, nibble):
+        byte = nibble & 0xF0
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
+        self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
+
+class I2C_LCD(PinsMixin):
+    def __init__(self, scl, sda, i2c_id=0, i2c_addr=0x27, rows=2, cols=16, freq=400000):
+        # I2C_LCD 클래스 초기화 메서드입니다. SCL, SDA 핀 번호와 I2C 주소, 디스플레이의 행과 열을 설정합니다.
+        self._pin_nums = (scl, sda)
+        # I2C 통신 설정을 위해 I2C 객체를 생성합니다.
+        self._i2c = I2C(i2c_id, scl=Pin(scl), sda=Pin(sda), freq=freq)
+        # I2C LCD 드라이버 객체를 생성합니다.
+        self._lcd = I2cLcd(self._i2c, i2c_addr, rows, cols)
+    
+    def clear(self):
+        # LCD 화면을 지웁니다.
+        self._lcd.clear()
+        
+    def putstr(self, message, col=0, row=0):
+        # 지정된 위치에 텍스트 메시지를 출력합니다.
+        self._lcd.move_to(col, row)
+        self._lcd.putstr(message)
+    
+    def backlight_on(self):
+        # LCD 백라이트를 켭니다.
+        self._lcd.hal_backlight_on()
+    
+    def backlight_off(self):
+        # LCD 백라이트를 끕니다.
+        self._lcd.hal_backlight_off()
