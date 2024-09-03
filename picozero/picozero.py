@@ -1998,3 +1998,41 @@ class DHTSensor(DigitalInputDevice):
     def __str__(self):
         self.read()
         return "Temperature: {}C, Humidity: {}%".format(self._temperature, self._humidity)
+        
+class WaterLevelSensor:
+    def __init__(self, pin, threshold=0.5):
+        """
+        WaterLevelSensor 클래스 초기화 메서드.
+        
+        :param pin: 수위 감지 센서가 연결된 아날로그 핀 번호.
+        :param threshold: 수위 임계값으로, 기본값은 0.5로 설정됨.
+        """
+        self.adc = ADC(Pin(pin))  # 아날로그 핀을 ADC로 설정
+        self.threshold = threshold  # 수위 임계값 설정
+
+    def read_value(self):
+        """
+        현재 수위 값을 읽어오는 메서드.
+        
+        :return: 0.0에서 1.0 사이의 값을 반환하여, 센서의 아날로그 값을 정규화된 값으로 반환.
+        """
+        # ADC 값을 0.0에서 1.0 사이의 값으로 변환하여 반환
+        return self.adc.read_u16() / 65535
+
+    def is_water_level_high(self):
+        """
+        현재 수위가 임계값을 초과하는지 확인하는 메서드.
+        
+        :return: 수위가 임계값보다 높으면 True, 그렇지 않으면 False를 반환.
+        """
+        # 읽어온 수위 값이 임계값을 초과하는지 여부를 확인
+        return self.read_value() > self.threshold
+
+    def set_threshold(self, threshold):
+        """
+        수위 임계값을 설정하는 메서드.
+        
+        :param threshold: 새로 설정할 수위 임계값.
+        """
+        # 새로운 임계값 설정
+        self.threshold = threshold
