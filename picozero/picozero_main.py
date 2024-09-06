@@ -2209,22 +2209,28 @@ class I2cLcd(LcdApi):
 
     def hal_write_command(self, cmd):
         byte = (cmd & 0xF0) | self.LCD_RS_CMD
+        # 백라이트 제어 플래그를 추가하여 항상 켜도록 설정
+        byte |= 0x08  # 백라이트 비트 추가
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
 
         byte = (cmd << 4) & 0xF0 | self.LCD_RS_CMD
+        byte |= 0x08  # 백라이트 비트 추가
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
 
     def hal_write_data(self, data):
         byte = (data & 0xF0) | self.LCD_RS_DATA
+        # 백라이트 제어 플래그를 추가하여 항상 켜도록 설정
+        byte |= 0x08  # 백라이트 비트 추가
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
 
         byte = (data << 4) & 0xF0 | self.LCD_RS_DATA
+        byte |= 0x08  # 백라이트 비트 추가
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE | 0x04]))
         self.i2c.writeto(self.i2c_addr, bytearray([byte | self.LCD_RW_WRITE]))
