@@ -1,7 +1,7 @@
 from machine import Pin, PWM, Timer, ADC, I2C
 from micropython import schedule
 from time import ticks_ms, ticks_us, sleep, sleep_ms
-import dht, ssd1306
+import dht, ssd1306, neopixel
 
 ###############################################################################
 # EXCEPTIONS
@@ -2346,3 +2346,55 @@ class SoilMoistureSensor:
         self.threshold = threshold
 
 #===========================================================================================================#
+#네오픽셀 제어
+class Neopixel:
+    def __init__(self, pin, num_leds):
+        """
+        NeoPixel 클래스 초기화 메서드
+        :param pin: 네오픽셀이 연결된 핀 번호 (GPIO 핀 번호)
+        :param num_leds: 제어할 NeoPixel LED의 개수
+        """
+        # Pin을 사용하여 해당 핀을 디지털 출력 핀으로 설정
+        self.pin = Pin(pin, Pin.OUT)
+        
+        # 제어할 LED 개수를 설정
+        self.num_leds = num_leds
+        
+        # NeoPixel 객체 초기화: 지정한 핀과 LED 개수를 사용하여 네오픽셀 제어 준비
+        self.np = neopixel.NeoPixel(self.pin, self.num_leds)
+
+    def set_pixel(self, n, color):
+        """
+        특정 LED에 색상을 설정하는 메서드
+        :param n: 색상을 설정할 LED 번호 (0부터 시작하는 인덱스)
+        :param color: (R, G, B) 형태의 색상 값, 각각 0~255 범위
+        """
+        if n < self.num_leds:
+            # 선택한 LED에 (R, G, B) 값으로 색상을 설정
+            self.np[n] = color
+            
+            # 변경 사항을 네오픽셀에 전송하여 실제로 색상이 적용되도록 함
+            self.np.write()
+
+    def fill(self, color):
+        """
+        모든 LED에 동일한 색상을 설정하는 메서드
+        :param color: (R, G, B) 형태의 색상 값, 각각 0~255 범위
+        """
+        for i in range(self.num_leds):
+            # 모든 LED에 지정된 색상을 설정
+            self.set_pixel(i, color)
+
+    def clear(self):
+        """
+        모든 LED를 끄는 메서드 (검정색으로 설정)
+        """
+        # 모든 LED를 (0, 0, 0) 즉, 검정색으로 설정하여 끔
+        self.fill((0, 0, 0))
+
+    def show(self):
+        """
+        현재 설정된 LED 색상을 적용하는 메서드 (write 명령어를 전송)
+        """
+        # 모든 변경 사항을 네오픽셀로 전송하여 실제로 표시되게 함
+        self.np.write()
