@@ -2398,3 +2398,44 @@ class Neopixel:
         """
         # 모든 변경 사항을 네오픽셀로 전송하여 실제로 표시되게 함
         self.np.write()
+#===========================================================================================================#
+#워터펌프 제어
+class WaterPump:
+    def __init__(self, pin1, pin2):
+        """
+        워터펌프 클래스 초기화 메서드
+        :param pin1: 모터 드라이버의 IN1 또는 A+ 핀에 연결된 GPIO 핀
+        :param pin2: 모터 드라이버의 IN2 또는 A- 핀에 연결된 GPIO 핀
+        """
+        self.motor_pin1 = DigitalOutputDevice(pin1)  # IN1 (A+) 핀 제어
+        self.motor_pin2 = DigitalOutputDevice(pin2)  # IN2 (A-) 핀 제어
+
+    def turn_on(self, direction=True):
+        """
+        워터펌프를 켜는 메서드
+        :param direction: True이면 정방향, False이면 역방향
+        """
+        if direction:
+            self.motor_pin1.on()
+            self.motor_pin2.off()
+        else:
+            self.motor_pin1.off()
+            self.motor_pin2.on()
+
+    def turn_off(self):
+        """
+        워터펌프를 끄는 메서드
+        """
+        self.motor_pin1.off()
+        self.motor_pin2.off()
+
+    def run_for(self, duration, direction=True):
+        """
+        워터펌프를 일정 시간 동안 동작시키는 메서드
+        :param duration: 워터펌프를 동작시킬 시간(초)
+        :param direction: True이면 정방향, False이면 역방향
+        """
+        self.turn_on(direction)
+        sleep(duration)
+        self.turn_off()
+
