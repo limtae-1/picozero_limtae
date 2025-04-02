@@ -1,5 +1,5 @@
 작성자가 이해하기 위한 설명파일
 
-1. picozero.py 파일은 Thonny에서 처음 다운로드 받은 원본
-2. 하위 picozero_main.py 파일은 부품별 Class를 추가한 파일(센서별 코드 작동 확인 완료 된것)
+1. picozero.py 파일은 Thonny에서 처음 다운로드 받은 원본에 부품별 Class를 추가한 파일(센서별 코드 작동 확인 완료 된것)
+2. 하위 picozero_init.py 파일은 Thonny에서 처음 다운로드 받은 원본
 3. 추가되는 파일에 대한 설명 앞으로 적기.
