@@ -39,5 +39,12 @@ from .picozero import (
     Thermistor,
 
     DistanceSensor,
-    DHTSensor
+    DHTSensor,
+    OLED,
+    I2C_LCD,
+    WaterLevelSensor,
+    SoilMoistureSensor,
+    Neopixel,
+    WaterPump,
+    
 )
