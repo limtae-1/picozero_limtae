@@ -1430,7 +1430,7 @@ class Robot:
         self._right.close()
     
 Rover = Robot
-
+'''
 class Servo(PWMOutputDevice):
     """
     Represents a PWM-controlled servo motor.
@@ -1499,7 +1499,7 @@ class Servo(PWMOutputDevice):
         Turn the servo "off" by setting the value to `None`.
         """
         self.value = None
-
+'''
 ###############################################################################
 # INPUT DEVICES
 ###############################################################################
@@ -2438,3 +2438,57 @@ class WaterPump:
         self.turn_on(direction)
         sleep(duration)
         self.turn_off()
+
+#===========================================================================================================#
+#기존 Servo클래스에서 제어하기 쉽게 하기 위한 클래스 재정의
+
+class Servo:
+    def __init__(self, pin, min_us=500, max_us=2500, freq=50):
+        self.pwm = PWM(Pin(pin))
+        self.pwm.freq(freq)
+        self.min_us = min_us
+        self.max_us = max_us
+        self.freq = freq
+        self._angle = 0  # 현재 각도 저장
+        self._is_on = True
+
+    def _angle_to_duty(self, angle):
+        pulse_us = self.min_us + (angle / 180) * (self.max_us - self.min_us)
+        period_us = 1000000 / self.freq
+        duty = int((pulse_us / period_us) * 65535)
+        return duty
+
+    @property
+    def value(self):
+        return self._angle
+
+    @value.setter
+    def value(self, angle):
+        angle = max(0, min(180, int(angle)))
+        self._angle = angle
+        if self._is_on:
+            self.pwm.duty_u16(self._angle_to_duty(angle))
+
+    def off(self):
+        self._is_on = False
+        self.pwm.duty_u16(0)
+
+    def on(self):
+        self._is_on = True
+        self.value = self._angle  # 현재 각도 다시 적용
+
+    def min(self):
+        self.value = 0  # 0도
+
+    def mid(self):
+        self.value = 90  # 90도
+
+    def max(self):
+        self.value = 180  # 180도
+
+    def pulse(self, start=0, end=180, delay=0.01):
+        """서보를 start~end 각도까지 서서히 이동"""
+        step = 1 if start < end else -1
+        for angle in range(start, end + step, step):
+            self.value = angle
+            sleep(delay)
