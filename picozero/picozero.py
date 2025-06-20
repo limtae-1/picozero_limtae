@@ -2552,3 +2552,38 @@ class TouchSensor(DigitalInputDevice):
         #센서의 출력이 반대일 수도 있음
         #위 예제는 물체가 있을 때 감지하는 코드
         #만약 센서가 반대로 인식한다면 value 값을 0으로 바꿀 것
+
+#===========================================================================================================#
+#조도센서 클래스
+class LightSensor:
+    """
+    아날로그 조도 센서 클래스 (예: CDS 센서)
+    밝기 값은 0~100의 비율로 반환됨
+    """
+    def __init__(self, pin):
+        self.adc = ADC(pin)
+
+    def read_value(self):
+        """
+        원시 ADC 값을 0~65535 범위로 반환
+        """
+        return self.adc.read_u16()
+
+    def brightness(self):
+        """
+        밝기 비율(0~100%)로 반환
+        CDS는 밝을수록 값이 낮아짐 → 반전하여 % 계산
+        """
+        raw = self.read_value()
+        percentage = (65535 - raw) * 100 // 65535
+        return percentage
+
+    def is_dark(self, threshold=60):
+        """
+        어두운 상태인지 판단 (기본 임계값: 60%)
+        """
+        return self.brightness() > threshold
+    
+    
+
+
