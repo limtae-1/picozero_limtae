@@ -2492,3 +2492,21 @@ class Servo:
         for angle in range(start, end + step, step):
             self.value = angle
             sleep(delay)
+            
+#===========================================================================================================#
+#충격감지센서 클래스
+class ShockSensor(DigitalInputDevice):
+    """
+    피지컬 컴퓨팅용 충격 센서 클래스
+    디지털 충격 센서를 제어할 수 있도록 picozero 스타일로 구성됨
+    """
+
+    def __init__(self, pin):
+        super().__init__(pin)
+    
+    def is_shocked(self):
+        """
+        충격이 감지되었는지 확인
+        (센서가 HIGH 상태이면 충격 감지로 간주)
+        """
+        return self.value == 1
