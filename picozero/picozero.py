@@ -2121,7 +2121,21 @@ class LcdApi:
 
     def blink_cursor_off(self):
         self.write_command(self.LCD_ON_CTRL | self.LCD_ON_DISPLAY | self.LCD_ON_CURSOR)
-
+    '''
+    #------4행16열 LCD를 쓸 때 사용해야하는 move_to 함수------
+    #단, 함수를 바꾸면 그 다음에 아래에 존재하는 I2C_LCD클래스에서 rows파라미터를 4로 값을 변경해줘야함!!
+    def move_to(self, cursor_x, cursor_y):
+        self.cursor_x = cursor_x
+        self.cursor_y = cursor_y
+        # DDRAM 주소는 4라인 LCD 기준으로 설정
+        line_offsets = [0x00, 0x40, 0x14, 0x54]  # 4-line LCD용 DDRAM 주소 오프셋
+        if cursor_y >= len(line_offsets):
+            cursor_y = 0  # 잘못된 줄이면 첫 줄로
+        addr = line_offsets[cursor_y] + cursor_x
+        self.write_command(self.LCD_DDRAM | addr)
+    #-------------------------------------------------------
+    '''
+    #------2행16열 LCD를 쓸 때 사용해야하는 move_to 함수------
     def move_to(self, cursor_x, cursor_y):
         self.cursor_x = cursor_x
         self.cursor_y = cursor_y
@@ -2129,7 +2143,7 @@ class LcdApi:
         if cursor_y == 1:
             addr += 0x40  # 2nd line offset
         self.write_command(self.LCD_DDRAM | addr)
-
+    #-------------------------------------------------------
     def putchar(self, char):
         if char == '\n':
             if self.implied_newline:
